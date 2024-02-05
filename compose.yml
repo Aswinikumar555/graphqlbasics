@@ -1,0 +1,50 @@
+version: "3.8"
+name: "micro_service"
+
+networks:
+  default:
+    name: graphql_service_network
+
+services:
+  graphql_database_service:
+    image: postgres:14.1-alpine
+    restart: always
+    container_name: graphql_service_db_server
+    environment:
+      - POSTGRES_USER=graphql_service_db_user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=graphql_service_db
+    ports:
+      - "5432:5432"
+    networks:
+      - default
+    volumes:
+      - graphql_service_db:/var/lib/postgresql/data
+      - ./scripts/init-database.sh:/docker-entrypoint-initdb.d/init-database.sh
+  graphql_app_service:
+    build:
+      context: .
+      dockerfile: ./Dockerfile.dev
+      args:
+        - NODE_ENV=dev
+        - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+        - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+        - AWS_REGION=${AWS_REGION}
+    image: graphql_service_app/dev:latest
+    container_name: graphql_service_app_server
+    restart: always
+    environment:
+      - NODE_ENV=dev
+    ports:
+      - "3000:3000"
+    depends_on:
+      - graphql_database_service
+    networks:
+      - default
+    links:
+      - graphql_database_service
+    volumes:
+      - graphql_service_app:/app
+volumes:
+  graphql_service_db:
+  graphql_service_app:
